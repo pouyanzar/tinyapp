@@ -4,12 +4,8 @@ const PORT = 8080;
 const bodyParser = require('body-parser');
 
 function generateRandomString() {
-  let str = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let randomStr = '';
-  for (let i = 0; i < 6; i++) {
-    randomStr += str[Math.floor(Math.random() * str.length)];
-  }
-  return randomStr;
+
+  return Math.random().toString(36).substring(2,8);
 }
 
 app.use(bodyParser.urlencoded({extended: true}));
@@ -59,6 +55,10 @@ app.post("/urls", (req, res) => {
   res.redirect(`/u/${shortURL}`);
 });
 
+app.post("/urls/:shortURL/delete", (req, res) => {
+  delete urlDatabase[req.params.shortURL];
+  res.redirect("/urls");
+})
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`)
 });
