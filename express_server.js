@@ -4,8 +4,14 @@ const PORT = 8080;
 const bodyParser = require('body-parser');
 
 function generateRandomString() {
-  
+  let str = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let randomStr = '';
+  for (let i = 0; i < 6; i++) {
+    randomStr += str[Math.floor(Math.random() * str.length)];
+  }
+  return randomStr;
 }
+
 app.use(bodyParser.urlencoded({extended: true}));
 
 app.set("view engine", "ejs");
@@ -41,9 +47,16 @@ app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
 
+app.get("/u/:shortURL", (req, res) => {
+  const shortURL = req.params.shortURL;
+  const longURL = urlDatabase[shortURL];
+  res.redirect(longURL);
+});
+
 app.post("/urls", (req, res) => {
-  console.log(req.body);
-  res.send("OK");
+  const shortURL = generateRandomString();
+  urlDatabase[shortURL] = req.body.longURL;
+  res.redirect(`/u/${shortURL}`);
 });
 
 app.listen(PORT, () => {
