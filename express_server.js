@@ -2,7 +2,7 @@ const express = require("express");
 const app = express();
 const PORT = 8080;
 const bodyParser = require('body-parser');
-
+const cookieParser = require('cookie-parser');
 const generateRandomString = () => {
 
   return Math.random().toString(36).substring(2,8);
@@ -49,6 +49,11 @@ app.get("/u/:shortURL", (req, res) => {
   res.redirect(longURL);
 });
 
+app.post("/login", (req, res) => {
+  console.log(req.body.username)
+  res.cookie('username', req.body.username);
+  res.redirect("/urls");
+})
 app.post("/urls", (req, res) => {
   const shortURL = generateRandomString();
   urlDatabase[shortURL] = req.body.longURL;
@@ -59,7 +64,6 @@ app.post("/urls/:id", (req, res) => {
   const newURL = req.body.newLongURL;
   urlDatabase[req.params.id] = newURL;
   res.redirect("/urls");
-
 })
 
 app.post("/urls/:shortURL/delete", (req, res) => {
