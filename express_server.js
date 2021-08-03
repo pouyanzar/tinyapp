@@ -3,10 +3,10 @@ const app = express();
 const PORT = 8080;
 const bodyParser = require('body-parser');
 
-function generateRandomString() {
+const generateRandomString = () => {
 
   return Math.random().toString(36).substring(2,8);
-}
+};
 
 app.use(bodyParser.urlencoded({extended: true}));
 
@@ -24,7 +24,7 @@ app.get("/", (req, res) => {
 app.get("/urls", (req, res) => {
   const templateVars = {urls: urlDatabase};
   res.render('urls_index', templateVars);
-}); 
+});
 app.get("/urls/new", (req, res) => {
   res.render("urls_new");
 });
@@ -58,7 +58,7 @@ app.post("/urls", (req, res) => {
 app.post("/urls/:shortURL/delete", (req, res) => {
   delete urlDatabase[req.params.shortURL];
   res.redirect("/urls");
-})
+});
 app.listen(PORT, () => {
-  console.log(`Example app listening on port ${PORT}!`)
+  console.log(`Example app listening on port ${PORT}!`);
 });
