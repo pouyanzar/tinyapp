@@ -7,7 +7,8 @@ const generateRandomString = () => {
 
   return Math.random().toString(36).substring(2,8);
 };
-
+const username = '';
+app.use(cookieParser());
 app.use(bodyParser.urlencoded({extended: true}));
 
 app.set("view engine", "ejs");
@@ -22,11 +23,12 @@ app.get("/", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const templateVars = {urls: urlDatabase};
+    const templateVars = {urls: urlDatabase, username: req.cookies["username"]};
   res.render('urls_index', templateVars);
 });
 app.get("/urls/new", (req, res) => {
-  res.render("urls_new");
+  const templateVars = {urls: urlDatabase, username: req.cookies["username"]};
+  res.render("urls_new", templateVars);
 });
 
 app.get("/urls/:shortURL", (req, res) => {
@@ -50,7 +52,10 @@ app.get("/u/:shortURL", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  console.log(req.body.username)
+  const templateVars = {
+    username: req.cookies["username"],
+    urls: urlDatabase,
+  }
   res.cookie('username', req.body.username);
   res.redirect("/urls");
 })
