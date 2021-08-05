@@ -1,5 +1,6 @@
 /* ===== Useful functions for server ===== */
 const {urlDatabase} = require('./data');
+const bcrypt = require('bcrypt');
 const generateRandomString = () => {
   return Math.random().toString(36).substring(2,8);
 };
@@ -26,8 +27,9 @@ const findUser = (users, userId) => {
 const authenticate = (users, email, password) => {
   for (let user in users) {
     if (users[user].email === email) {
-      if(users[user].password === password)
-      return users[user];
+      if(bcrypt.compareSync(password, users[user].hashedPassword)) {
+        return users[user];
+      }
     }
   }
   return null

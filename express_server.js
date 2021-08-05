@@ -5,6 +5,7 @@ const {generateRandomString, findUser, register, authenticate, urlsForUser} = re
 const {users, urlDatabase} = require('./data');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
+const bcrypt = require('bcrypt');
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({extended: true}));
 
@@ -29,12 +30,17 @@ app.get("/login", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
+  const userId = req.cookies.user_id;
+  if (!userId) {
+    res.status(403).send("You should login to see your URLs!");
+    return;
+  }
+  const user = users[userId]; 
   const templateVars = {
-    user: findUser(users, req.cookies["user_id"]),
-    urls: urlsForUser(req.cookies["user_id"])
+    user,
+    urls: urlsForUser(userId)
   };
-  
-  res.render('urls_index', templateVars);
+    res.render('urls_index', templateVars);
 });
 app.get("/urls/new", (req, res) => {
   const templateVars = {
@@ -75,16 +81,18 @@ app.get("/u/:shortURL", (req, res) => {
 app.post("/register", (req, res) => {
   const id = generateRandomString();
   const {email, password} = req.body;
+  const hashedPassword = bcrypt.hashSync(password, 10);
   !register(users, email, password) ?
     res.status(400).send("Email or password does not meet the requirements")
   : 
     (users[id] = {
       id,
       email,
-      password
+      hashedPassword
     },
     res.cookie("user_id", id),
     res.redirect("/urls"))
+    console.log(users)
 });
 app.post("/login", (req, res) => {
   
@@ -92,7 +100,7 @@ app.post("/login", (req, res) => {
     user: findUser(users, req.cookies["user_id"]),
     urls: urlDatabase
   };
-  const {email, password} = req.body;
+  const {email, password} = req.body;  
   const user = authenticate(users, email, password);
   if (user) {
     res.cookie("user_id", user.id);
