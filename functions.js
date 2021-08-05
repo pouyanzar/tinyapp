@@ -1,5 +1,5 @@
 /* ===== Useful functions for server ===== */
-
+const {urlDatabase} = require('./data');
 const generateRandomString = () => {
   return Math.random().toString(36).substring(2,8);
 };
@@ -33,9 +33,20 @@ const authenticate = (users, email, password) => {
   return null
 };
 
+const urlsForUser = (id) => {
+  const userUrl = {}
+  for (let item in urlDatabase) {
+    if (urlDatabase[item].userID === id) {
+      userUrl[item] = urlDatabase[item]
+    }
+  }
+  return userUrl;
+}
+
 module.exports= {
   generateRandomString,
   register,
   authenticate,
-  findUser
+  findUser,
+  urlsForUser
 };

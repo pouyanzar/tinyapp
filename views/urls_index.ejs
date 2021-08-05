@@ -22,6 +22,14 @@
         </tr>
       </thead>
       <tbody>
+
+        <% if (Object.keys(urls).length === 0) { %>
+          <tr>
+            <td>
+              You shold <a href="/login">login</a> to see the list of your URLs
+            </td>
+          </tr>
+        <% } else { %>
         <% for(let url in urls) { %>
           <form method="POST" action="/urls/<%= url %>/delete">
           <tr>
@@ -31,6 +39,7 @@
             <td><input type="submit" value="Delete" class="btn btn-outline-danger"></td>
           </form>
           </tr>
+        <% } %>
         <% } %>
       </tbody>
     </table>
