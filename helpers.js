@@ -17,11 +17,13 @@ const register = (users,email, password) => {
   return true;
 };
 
-const findUser = (users, userId) => {
-  if (users[userId]) {
-    return users[userId]
-  } 
-  return null;
+const getUserByEmail = (email, database) => {
+  for(let user in database) {
+    if (database[user].email === email) {
+      return user
+    } 
+  }
+  return undefined;
 };
 
 const authenticate = (users, email, password) => {
@@ -49,6 +51,6 @@ module.exports= {
   generateRandomString,
   register,
   authenticate,
-  findUser,
+  getUserByEmail,
   urlsForUser
 };

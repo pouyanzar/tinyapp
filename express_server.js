@@ -1,39 +1,43 @@
 const express = require("express");
-const app = express();
-const PORT = 8080;
-const {generateRandomString, findUser, register, authenticate, urlsForUser} = require('./functions');
 const {users, urlDatabase} = require('./data');
 const bodyParser = require('body-parser');
-const cookieParser = require('cookie-parser');
 const bcrypt = require('bcrypt');
+const cookieSession = require('cookie-session');
+const {generateRandomString, getUserByEmail, register, authenticate, urlsForUser} = require('./helpers');
+
+const app = express();
+const PORT = 8080;
+
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({extended: true}));
+app.use(cookieSession({
+  name: 'session',
+  keys: ['key1', 'key2']
+}));
 
 app.set("view engine", "ejs");
 
 /* ====== GET Requests ======== */
 
 app.get("/register", (req, res) => {
+
   const templateVars = {
-    user: findUser(users, req.cookies["user_id"]),
-    urls: urlsForUser(req.cookies["user_id"])
+    user: null,
   };
   res.render("registration", templateVars);
 });
 
 app.get("/login", (req, res) => {
   const templateVars = {
-    user: findUser(users, req.cookies["user_id"]),
-    urls: urlsForUser(req.cookies["user_id"])
+    user: null
   };
   res.render("login", templateVars);
 });
 
 app.get("/urls", (req, res) => {
-  const userId = req.cookies.user_id;
+  const userId = req.session.user_id;
   if (!userId) {
-    res.status(403).send("You should login to see your URLs!");
-    return;
+    return res.status(403).send("<html><body> You need <a href='/login'>login</a> to access your URLs</body></html>");
   }
   const user = users[userId]; 
   const templateVars = {
@@ -43,37 +47,49 @@ app.get("/urls", (req, res) => {
     res.render('urls_index', templateVars);
 });
 app.get("/urls/new", (req, res) => {
-  const templateVars = {
-    user: findUser(users, req.cookies["user_id"]),
-    urls: urlsForUser(req.cookies["user_id"])
-  };
-  if (templateVars.user) {
-    return res.render("urls_new", templateVars);
+  const userId = req.session.user_id;
+  if (!users[userId]) {
+    return res.redirect("/login");
   }
-  return res.render("login", templateVars);
+  const email = users[userId].email;
+  const user = getUserByEmail(email, users);
+  const templateVars = {
+    user,
+  };
+  res.render("urls_new", templateVars);
 });
 
 app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = {shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL, user: findUser(users, req.cookies["user_id"])};
-  console.log(req.cookies.user_id)
-  console.log(urlDatabase[req.params.shortURL].userID)
-  if (req.cookies.user_id !== urlDatabase[req.params.shortURL].userID) {
-    res.send("<html><body>Your authentication Failed</body></html>");
+  const shortURL = req.params.shortURL;
+  const userId = req.session.user_id;
+  if(!urlDatabase[shortURL]) {
+    res.status(404).send("<html><body>The requested link not found. Check your <a href='/urls'>URL list </a> again!</body></html>");
   }
+  if (userId !== urlDatabase[shortURL].userID) {
+    res.send("<html><body>You don't have access to that URL,Check your <a href='/urls'>URL List</a> again! Or <a href='/login'>Login</a> with correct credentials to access the URL!</body></html>");
+  }
+  const email = users[userId].email;
+  const user = getUserByEmail(email, users);
+  const templateVars = {
+    shortURL,
+    longURL: urlDatabase[shortURL].longURL,
+    user
+  };
+  
   res.render("urls_show", templateVars);
-});
-
-app.get("/urls.json", (req, res) => {
-  res.json(urlDatabase);
 });
 
 app.get("/u/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
-  if (urlDatabase[shortURL]) {
-    const longURL = urlDatabase[shortURL].longURL;
-    return res.redirect(longURL);
+  if (!urlDatabase[shortURL]) {
+    return res.send("The URL is not correct");
   }
-  return res.send("The URL is not correct");
+  const userId = req.session.user_id;
+  if(users[userId] !== urlDatabase[shortURL].userID) {
+    return res.status(403).send("<html><body>You don't have access to that URL,Check your <a href='/urls'>URL List</a> again! Or <a href='/login'>Login</a> with correct credentials to access the URL!</body></html>");
+  }
+  const longURL = urlDatabase[shortURL].longURL;
+  res.redirect(longURL);
 });
 
 /* =========== POST Requests ============ */
@@ -90,34 +106,32 @@ app.post("/register", (req, res) => {
       email,
       hashedPassword
     },
-    res.cookie("user_id", id),
-    res.redirect("/urls"))
+    req.session.user_id = id,
+    res.redirect("/urls"));
     console.log(users)
 });
 app.post("/login", (req, res) => {
-  
-   templateVars = {
-    user: findUser(users, req.cookies["user_id"]),
-    urls: urlDatabase
-  };
   const {email, password} = req.body;  
   const user = authenticate(users, email, password);
-  if (user) {
-    res.cookie("user_id", user.id);
-    return res.redirect("/urls");
+   templateVars = {
+    user,
+  };
+  if (!user) {
+    return res.send("<html><head></head><body>Email/password combination is not correct try <a href='/login'>login</a> again!</body></html>");
   } 
-  res.send("Email/password combination is not correct");
+  req.session.user_id = user.id;
+  res.redirect("/urls");
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie('user_id');
-  res.redirect("/urls");
+  req.session = null;
+  res.redirect("/login");
 });
 
 app.post("/urls", (req, res) => {
   const shortURL = generateRandomString();
   urlDatabase[shortURL] = req.body;
-  urlDatabase[shortURL]['userID'] = req.cookies.user_id;
+  urlDatabase[shortURL]['userID'] = req.session.user_id;
   res.redirect(`/u/${shortURL}`);
 });
 
@@ -131,7 +145,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   if (!urlDatabase[req.params.shortURL]) {
     res.status(400).send("The URL not found!!!");
   }
-  if (urlDatabase[req.params.shortURL].userID === req.cookies.user_id) {
+  if (urlDatabase[req.params.shortURL].userID === req.session.user_id) {
     delete urlDatabase[req.params.shortURL];
     res.redirect("/urls");
   }
