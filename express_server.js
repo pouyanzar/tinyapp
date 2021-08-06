@@ -8,7 +8,6 @@ const {generateRandomString, getUserByEmail, register, authenticate, urlsForUser
 const app = express();
 const PORT = 8080;
 
-app.use(cookieParser());
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(cookieSession({
   name: 'session',
@@ -51,10 +50,8 @@ app.get("/urls/new", (req, res) => {
   if (!users[userId]) {
     return res.redirect("/login");
   }
-  const email = users[userId].email;
-  const user = getUserByEmail(email, users);
   const templateVars = {
-    user,
+    user: users[userId]
   };
   res.render("urls_new", templateVars);
 });
@@ -68,12 +65,10 @@ app.get("/urls/:shortURL", (req, res) => {
   if (userId !== urlDatabase[shortURL].userID) {
     res.send("<html><body>You don't have access to that URL,Check your <a href='/urls'>URL List</a> again! Or <a href='/login'>Login</a> with correct credentials to access the URL!</body></html>");
   }
-  const email = users[userId].email;
-  const user = getUserByEmail(email, users);
   const templateVars = {
     shortURL,
     longURL: urlDatabase[shortURL].longURL,
-    user
+    user: users[userId]
   };
   
   res.render("urls_show", templateVars);
@@ -85,7 +80,7 @@ app.get("/u/:shortURL", (req, res) => {
     return res.send("The URL is not correct");
   }
   const userId = req.session.user_id;
-  if(users[userId] !== urlDatabase[shortURL].userID) {
+  if(userId !== urlDatabase[shortURL].userID) {
     return res.status(403).send("<html><body>You don't have access to that URL,Check your <a href='/urls'>URL List</a> again! Or <a href='/login'>Login</a> with correct credentials to access the URL!</body></html>");
   }
   const longURL = urlDatabase[shortURL].longURL;
@@ -98,17 +93,16 @@ app.post("/register", (req, res) => {
   const id = generateRandomString();
   const {email, password} = req.body;
   const hashedPassword = bcrypt.hashSync(password, 10);
-  !register(users, email, password) ?
-    res.status(400).send("Email or password does not meet the requirements")
-  : 
-    (users[id] = {
-      id,
-      email,
-      hashedPassword
-    },
-    req.session.user_id = id,
-    res.redirect("/urls"));
-    console.log(users)
+  if(!register(users, email, password)) {
+    return res.status(400).send("Email Alredy exists or email/password does not meet the requirements!")
+  }
+  users[id] = {
+    id,
+    email,
+    hashedPassword
+  };
+  req.session.user_id = id;
+  res.redirect("/urls");
 });
 app.post("/login", (req, res) => {
   const {email, password} = req.body;  
@@ -151,6 +145,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   }
   return res.send("<html><head></head><body>You do not have permission to edit/delete this URL</body></html>");
 });
+
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });

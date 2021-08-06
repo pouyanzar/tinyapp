@@ -9,10 +9,9 @@ const register = (users,email, password) => {
   if (email === "" || password === "") {
     return null;
   }
-  for (let user in users) {
-    if (users[user].email === email) {
-      return null;
-    }
+  const user = getUserByEmail(email, users);
+  if (user) {
+    return null;
   }
   return true;
 };
